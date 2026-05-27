@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Shield, LayoutDashboard, FileText, BarChart3,
-  Users, LogOut, Settings, ChevronRight,
+  Users, LogOut, GitCompare, ScrollText, ChevronRight,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/lib/store";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/analysis", label: "Analyses IA", icon: BarChart3 },
+  { href: "/cross-check", label: "Cross-Checking", icon: GitCompare },
   { href: "/users", label: "Équipe", icon: Users },
 ];
 

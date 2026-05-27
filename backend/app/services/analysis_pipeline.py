@@ -16,6 +16,7 @@ from app.services.analytical_review import run_analytical_review
 from app.services.cycle_audit import run_cycle_ventes, run_cycle_tresorerie
 from app.services.risk_scorer import compute_risk_score
 from app.services.report_generator import generate_ai_synthesis, generate_word_report, generate_excel_report
+from app.services.anonymizer import anonymize_fec_dataframe
 from app.core.config import settings
 import logging
 import os
@@ -58,6 +59,10 @@ async def run_full_analysis(
         df, meta = parse_fec(content)
         fiscal_year = document.fiscal_year
         entity_name = document.entity_name or "Entité inconnue"
+
+        # Anonymisation NLP avant traitement IA
+        df, anon_stats = anonymize_fec_dataframe(df)
+        logger.info(f"Anonymisation : {anon_stats['total_substitutions']} substitutions sur {anon_stats['columns_processed']}")
 
         # Module 1 : Vérification intrinsèque
         intrinsic_check = validate_partie_double(df)
