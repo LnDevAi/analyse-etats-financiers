@@ -76,7 +76,7 @@ async def get_my_subscription(
 @router.post("/subscription", response_model=SubscriptionOut)
 async def create_subscription(
     body: SubscriptionCreate,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     plan_res = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == body.plan_id))
@@ -104,7 +104,7 @@ async def create_subscription(
 @router.patch("/subscription/upgrade", response_model=SubscriptionOut)
 async def upgrade_subscription(
     body: SubscriptionUpgrade,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -319,7 +319,7 @@ async def list_payments(
 
 @router.get("/dashboard", response_model=BillingDashboard)
 async def billing_dashboard(
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     # MRR = somme montants mensuels des abonnements ACTIVE

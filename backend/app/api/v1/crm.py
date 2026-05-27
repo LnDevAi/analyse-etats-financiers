@@ -31,7 +31,7 @@ async def list_clients(
     search: Optional[str] = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(CRMClient).order_by(CRMClient.updated_at.desc())
@@ -49,7 +49,7 @@ async def list_clients(
 @router.post("/clients", response_model=CRMClientOut)
 async def create_client(
     body: CRMClientCreate,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     client = CRMClient(**body.model_dump())
@@ -64,7 +64,7 @@ async def create_client(
 @router.get("/clients/{client_id}", response_model=CRMClientOut)
 async def get_client(
     client_id: uuid.UUID,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(CRMClient).where(CRMClient.id == client_id))
@@ -78,7 +78,7 @@ async def get_client(
 async def update_client(
     client_id: uuid.UUID,
     body: CRMClientUpdate,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(CRMClient).where(CRMClient.id == client_id))
@@ -97,7 +97,7 @@ async def update_client(
 @router.delete("/clients/{client_id}", status_code=204)
 async def delete_client(
     client_id: uuid.UUID,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(CRMClient).where(CRMClient.id == client_id))
@@ -112,7 +112,7 @@ async def delete_client(
 
 @router.get("/pipeline/stats")
 async def pipeline_stats(
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     stages = ["PROSPECT", "QUALIFIÉ", "DÉMO", "NÉGOCIATION", "GAGNÉ", "PERDU"]
@@ -134,7 +134,7 @@ async def pipeline_stats(
 async def add_contact(
     client_id: uuid.UUID,
     body: CRMContactCreate,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(CRMClient).where(CRMClient.id == client_id))
@@ -150,7 +150,7 @@ async def add_contact(
 @router.delete("/contacts/{contact_id}", status_code=204)
 async def delete_contact(
     contact_id: uuid.UUID,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(CRMContact).where(CRMContact.id == contact_id))
@@ -166,7 +166,7 @@ async def delete_contact(
 @router.get("/clients/{client_id}/activities", response_model=List[ActivityLogOut])
 async def list_activities(
     client_id: uuid.UUID,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -182,7 +182,7 @@ async def list_activities(
 async def add_activity(
     client_id: uuid.UUID,
     body: ActivityLogCreate,
-    current_user: User = Depends(require_role("ADMIN")),
+    current_user: User = Depends(require_role("ASSOCIE")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(CRMClient).where(CRMClient.id == client_id))
