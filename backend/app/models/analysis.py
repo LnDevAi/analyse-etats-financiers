@@ -38,6 +38,8 @@ class Analysis(Base):
     analytical_review = Column(JSON, nullable=True)
     cycle_ventes_result = Column(JSON, nullable=True)
     cycle_tresorerie_result = Column(JSON, nullable=True)
+    coherence_check_result = Column(JSON, nullable=True)
+    balance_reconciliation_result = Column(JSON, nullable=True)
 
     # Rapport IA généré
     ai_synthesis = Column(Text, nullable=True)

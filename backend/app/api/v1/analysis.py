@@ -46,6 +46,17 @@ async def create_analysis(
         if not prev_doc_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Document N-1 introuvable")
 
+    # Vérifier la balance générale si fournie
+    if body.balance_document_id:
+        bal_doc_result = await db.execute(
+            select(Document).where(
+                Document.id == body.balance_document_id,
+                Document.tenant_id == current_user.tenant_id,
+            )
+        )
+        if not bal_doc_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Balance générale introuvable")
+
     analysis = Analysis(
         tenant_id=current_user.tenant_id,
         document_id=body.document_id,
@@ -64,6 +75,7 @@ async def create_analysis(
         current_user.tenant_id,
         db,
         body.previous_document_id,
+        body.balance_document_id,
     )
 
     return analysis

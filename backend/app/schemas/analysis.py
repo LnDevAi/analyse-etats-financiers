@@ -7,7 +7,8 @@ from app.models.analysis import AnalysisStatus, RiskLevel
 
 class AnalysisCreate(BaseModel):
     document_id: UUID
-    previous_document_id: Optional[UUID] = None  # FEC N-1 pour la revue analytique
+    previous_document_id: Optional[UUID] = None      # FEC N-1 pour la revue analytique
+    balance_document_id: Optional[UUID] = None        # Balance générale pour réconciliation
 
 
 class AnomalyOut(BaseModel):
@@ -36,6 +37,8 @@ class AnalysisOut(BaseModel):
     analytical_review: Optional[Dict[str, Any]]
     cycle_ventes_result: Optional[Dict[str, Any]]
     cycle_tresorerie_result: Optional[Dict[str, Any]]
+    coherence_check_result: Optional[Dict[str, Any]]
+    balance_reconciliation_result: Optional[Dict[str, Any]]
     ai_synthesis: Optional[str]
     anomalies: List[AnomalyOut] = []
     created_at: datetime

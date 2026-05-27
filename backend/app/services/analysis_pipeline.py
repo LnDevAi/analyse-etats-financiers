@@ -17,6 +17,8 @@ from app.services.cycle_audit import run_cycle_ventes, run_cycle_tresorerie
 from app.services.risk_scorer import compute_risk_score
 from app.services.report_generator import generate_ai_synthesis, generate_word_report, generate_excel_report
 from app.services.anonymizer import anonymize_fec_dataframe
+from app.services.coherence_checker import run_coherence_check
+from app.services.balance_reconciliation import run_balance_reconciliation
 from app.core.config import settings
 import logging
 import os
@@ -30,6 +32,7 @@ async def run_full_analysis(
     tenant_id: UUID,
     db: AsyncSession,
     previous_document_id: Optional[UUID] = None,
+    balance_document_id: Optional[UUID] = None,
 ):
     """Exécute le pipeline IA complet sur un document FEC."""
     try:
@@ -98,6 +101,21 @@ async def run_full_analysis(
         # Module 6 : Cycle Trésorerie
         cycle_tresorerie_result = run_cycle_tresorerie(df)
 
+        # Module 7 : Cohérence des états financiers SYSCOHADA
+        coherence_check_result = run_coherence_check(df)
+        logger.info(f"Cohérence SYSCOHADA : {coherence_check_result.get('risk_level')} — {coherence_check_result.get('total_anomalies', 0)} anomalie(s)")
+
+        # Module 8 : Réconciliation Balance Générale vs FEC (optionnel)
+        balance_reconciliation_result = None
+        if balance_document_id:
+            bal_doc_result = await db.execute(select(Document).where(Document.id == balance_document_id))
+            bal_document = bal_doc_result.scalar_one_or_none()
+            if bal_document and os.path.exists(bal_document.storage_path):
+                with open(bal_document.storage_path, "rb") as f:
+                    balance_content = f.read()
+                balance_reconciliation_result = run_balance_reconciliation(df, balance_content)
+                logger.info(f"Réconciliation balance : {balance_reconciliation_result.get('risk_level')} — {balance_reconciliation_result.get('discrepancies_count', 0)} écart(s)")
+
         # Calcul du score de risque global
         scoring = compute_risk_score(
             intrinsic_check=intrinsic_check,
@@ -106,6 +124,7 @@ async def run_full_analysis(
             analytical_review=analytical_review,
             cycle_ventes_result=cycle_ventes_result,
             cycle_tresorerie_result=cycle_tresorerie_result,
+            coherence_check_result=coherence_check_result,
         )
 
         # Génération synthèse IA
@@ -147,12 +166,14 @@ async def run_full_analysis(
         analysis.analytical_review = analytical_review
         analysis.cycle_ventes_result = cycle_ventes_result
         analysis.cycle_tresorerie_result = cycle_tresorerie_result
+        analysis.coherence_check_result = coherence_check_result
+        analysis.balance_reconciliation_result = balance_reconciliation_result
         analysis.ai_synthesis = ai_synthesis
         analysis.docx_report_path = docx_path
         analysis.xlsx_report_path = xlsx_path
 
         # Créer les anomalies détectées
-        await _create_anomalies(db, analysis_id, tenant_id, isolation_forest_result, cycle_tresorerie_result, cycle_ventes_result, benford_result)
+        await _create_anomalies(db, analysis_id, tenant_id, isolation_forest_result, cycle_tresorerie_result, cycle_ventes_result, benford_result, coherence_check_result)
 
         await db.commit()
         logger.info(f"Analyse {analysis_id} terminée — score {scoring['global_score']}")
@@ -175,6 +196,7 @@ async def _create_anomalies(
     tresorerie: Optional[Dict],
     ventes: Optional[Dict],
     benford: Optional[Dict],
+    coherence: Optional[Dict] = None,
 ):
     anomalies = []
 
@@ -213,6 +235,43 @@ async def _create_anomalies(
             description=benford.get("interpretation", "Déviation loi de Benford"),
             details={"conformity_score": benford.get("conformity_score"), "p_value": benford.get("p_value")},
         ))
+
+    if coherence and coherence.get("risk_level") in ("ORANGE", "ROUGE"):
+        # Soldes anormaux
+        for item in coherence.get("soldes_normaux", {}).get("anomalies", [])[:5]:
+            anomalies.append(Anomaly(
+                analysis_id=analysis_id,
+                tenant_id=tenant_id,
+                module="COHERENCE_SYSCOHADA",
+                severity=RiskLevel(item.get("severity", "ORANGE")),
+                description=item.get("description", "Solde anormal SYSCOHADA"),
+                affected_account=item.get("account"),
+                amount=abs(item.get("actual_solde_net", 0)),
+                details=item,
+            ))
+        # Doublons
+        for item in coherence.get("doublons", {}).get("duplicates", [])[:5]:
+            anomalies.append(Anomaly(
+                analysis_id=analysis_id,
+                tenant_id=tenant_id,
+                module="COHERENCE_DOUBLON",
+                severity=RiskLevel(item.get("severity", "ROUGE")),
+                description=f"Doublon détecté — {item.get('type', '')}",
+                affected_account=item.get("account"),
+                amount=item.get("debit") or item.get("credit"),
+                details=item,
+            ))
+        # Incohérence résultat / bilan
+        if not coherence.get("resultat_coherence", {}).get("coherent", True):
+            res = coherence["resultat_coherence"]
+            anomalies.append(Anomaly(
+                analysis_id=analysis_id,
+                tenant_id=tenant_id,
+                module="COHERENCE_RESULTAT",
+                severity=RiskLevel(res.get("risk_level", "ROUGE")),
+                description=res.get("interpretation", "Incohérence du résultat net"),
+                details=res,
+            ))
 
     for a in anomalies:
         db.add(a)

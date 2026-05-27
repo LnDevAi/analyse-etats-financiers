@@ -64,8 +64,16 @@ export const listDocuments = () => api.get("/documents/");
 export const deleteDocument = (id: string) => api.delete(`/documents/${id}`);
 
 // Analysis
-export const createAnalysis = (document_id: string, previous_document_id?: string) =>
-  api.post("/analyses/", { document_id, previous_document_id: previous_document_id || undefined });
+export const createAnalysis = (
+  document_id: string,
+  previous_document_id?: string,
+  balance_document_id?: string,
+) =>
+  api.post("/analyses/", {
+    document_id,
+    previous_document_id: previous_document_id || undefined,
+    balance_document_id: balance_document_id || undefined,
+  });
 
 export const listAnalyses = () => api.get("/analyses/");
 

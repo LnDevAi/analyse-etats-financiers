@@ -16,18 +16,23 @@ interface AnalyseModalProps {
   doc: any;
   documents: any[];
   onClose: () => void;
-  onConfirm: (docId: string, prevDocId?: string) => void;
+  onConfirm: (docId: string, prevDocId?: string, balanceDocId?: string) => void;
 }
 
 function AnalyseModal({ doc, documents, onClose, onConfirm }: AnalyseModalProps) {
   const [previousDocId, setPreviousDocId] = useState("");
+  const [balanceDocId, setBalanceDocId] = useState("");
+
   const otherFecDocs = documents.filter(
     (d) => d.id !== doc.id && d.document_type === "FEC"
+  );
+  const balanceDocs = documents.filter(
+    (d) => d.id !== doc.id && d.document_type === "BALANCE_GENERALE"
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold text-[#1e293b]">Lancer l'analyse IA</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -35,43 +40,65 @@ function AnalyseModal({ doc, documents, onClose, onConfirm }: AnalyseModalProps)
           </button>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-gray-600 mb-5">
           Document sélectionné :{" "}
           <span className="font-medium text-[#1e293b]">{doc.original_filename}</span>
           {doc.fiscal_year && <span className="text-gray-400"> — {doc.fiscal_year}</span>}
         </p>
 
-        {otherFecDocs.length > 0 && (
-          <div className="mb-4">
+        <div className="space-y-4">
+          {/* FEC N-1 */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
-              <GitCompare className="w-4 h-4" /> Comparer avec l'exercice N-1 (optionnel)
+              <GitCompare className="w-4 h-4" />
+              FEC exercice N-1 — revue analytique (optionnel)
             </label>
             <select
               value={previousDocId}
               onChange={(e) => setPreviousDocId(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e293b]"
             >
-              <option value="">— Analyse simple (sans comparaison N-1) —</option>
+              <option value="">— Sans comparaison N vs N-1 —</option>
               {otherFecDocs.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.original_filename}
-                  {d.fiscal_year ? ` (${d.fiscal_year})` : ""}
-                  {d.entity_name ? ` — ${d.entity_name}` : ""}
+                  {d.original_filename}{d.fiscal_year ? ` (${d.fiscal_year})` : ""}{d.entity_name ? ` — ${d.entity_name}` : ""}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Balance Générale */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Balance générale — réconciliation FEC (optionnel)
+            </label>
+            <select
+              value={balanceDocId}
+              onChange={(e) => setBalanceDocId(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e293b]"
+            >
+              <option value="">— Sans réconciliation balance —</option>
+              {balanceDocs.length > 0
+                ? balanceDocs.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.original_filename}{d.fiscal_year ? ` (${d.fiscal_year})` : ""}
+                    </option>
+                  ))
+                : <option disabled>Aucune balance importée — importez un fichier de type "Balance Générale"</option>
+              }
+            </select>
             <p className="text-xs text-gray-400 mt-1">
-              Sélectionnez le FEC de l'exercice précédent pour activer la revue analytique N vs N-1.
+              Détecte les manipulations entre la balance comptable et le FEC.
             </p>
           </div>
-        )}
+        </div>
 
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 btn-secondary text-sm py-2">
             Annuler
           </button>
           <button
-            onClick={() => onConfirm(doc.id, previousDocId || undefined)}
+            onClick={() => onConfirm(doc.id, previousDocId || undefined, balanceDocId || undefined)}
             className="flex-1 btn-primary text-sm py-2 flex items-center justify-center gap-2"
           >
             <Play className="w-4 h-4" /> Lancer l'analyse
@@ -127,12 +154,15 @@ export default function DocumentsPage() {
     maxFiles: 1,
   });
 
-  const handleAnalyseConfirm = async (docId: string, prevDocId?: string) => {
+  const handleAnalyseConfirm = async (docId: string, prevDocId?: string, balanceDocId?: string) => {
     setAnalyseTarget(null);
     setAnalysing(docId);
     try {
-      const res = await createAnalysis(docId, prevDocId);
-      toast.success(prevDocId ? "Analyse N vs N-1 lancée" : "Analyse lancée en arrière-plan");
+      const res = await createAnalysis(docId, prevDocId, balanceDocId);
+      const msg = balanceDocId
+        ? "Analyse + réconciliation balance lancée"
+        : prevDocId ? "Analyse N vs N-1 lancée" : "Analyse lancée en arrière-plan";
+      toast.success(msg);
       router.push(`/analysis/${res.data.id}`);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Erreur lors du lancement");
@@ -184,6 +214,7 @@ export default function DocumentsPage() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e293b]"
               >
                 <option value="FEC">FEC (Fichier Écritures Comptables)</option>
+                <option value="BALANCE_GENERALE">Balance Générale (CSV/TSV)</option>
                 <option value="LIASSE_FISCALE_PDF">Liasse Fiscale PDF</option>
                 <option value="BILAN_PDF">Bilan PDF</option>
               </select>

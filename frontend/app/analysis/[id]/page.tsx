@@ -313,6 +313,190 @@ export default function AnalysisDetailPage() {
               </div>
             )}
 
+            {/* Cohérence SYSCOHADA */}
+            {analysis.coherence_check_result && (
+              <div className="card col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-[#1e293b]" />
+                    <h3 className="text-sm font-semibold text-[#1e293b]">Cohérence des États Financiers SYSCOHADA</h3>
+                  </div>
+                  <RiskBadge level={analysis.coherence_check_result.risk_level} />
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 mb-4">
+                  {analysis.coherence_check_result.interpretation}
+                </p>
+
+                {/* 4 sous-modules en grille */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Soldes normaux */}
+                  <div className="border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-[#1e293b]">Soldes normaux SYSCOHADA</p>
+                      <RiskBadge level={analysis.coherence_check_result.soldes_normaux?.risk_level || "VERT"} />
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">
+                      {analysis.coherence_check_result.soldes_normaux?.anomalies_count || 0} compte(s) avec signe anormal
+                      {" sur "}
+                      {analysis.coherence_check_result.soldes_normaux?.accounts_checked || 0} vérifiés
+                    </p>
+                    {analysis.coherence_check_result.soldes_normaux?.anomalies?.slice(0, 3).map((a: any, i: number) => (
+                      <div key={i} className="text-xs text-red-600 border-l-2 border-red-300 pl-2 mb-1 truncate" title={a.description}>
+                        {a.account} — {a.description}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Résultat */}
+                  <div className="border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-[#1e293b]">Cohérence du résultat net</p>
+                      <RiskBadge level={analysis.coherence_check_result.resultat_coherence?.risk_level || "VERT"} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-400">Produits (Cl.7)</p>
+                        <p className="font-semibold text-[#1e293b]">
+                          {(analysis.coherence_check_result.resultat_coherence?.produits_cl7 || 0).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-400">Charges (Cl.6)</p>
+                        <p className="font-semibold text-[#1e293b]">
+                          {(analysis.coherence_check_result.resultat_coherence?.charges_cl6 || 0).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-400">Résultat FEC</p>
+                        <p className={`font-bold ${(analysis.coherence_check_result.resultat_coherence?.resultat_fec || 0) >= 0 ? "text-green-700" : "text-red-700"}`}>
+                          {(analysis.coherence_check_result.resultat_coherence?.resultat_fec || 0).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded p-2">
+                        <p className="text-gray-400">Compte 13x</p>
+                        <p className="font-semibold text-[#1e293b]">
+                          {(analysis.coherence_check_result.resultat_coherence?.resultat_enregistre_13x || 0).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Équilibre bilan */}
+                  <div className="border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-[#1e293b]">Équilibre du bilan (Actif = Passif)</p>
+                      <RiskBadge level={analysis.coherence_check_result.equilibre_bilan?.risk_level || "VERT"} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-blue-50 rounded p-2">
+                        <p className="text-blue-500">Total Actif</p>
+                        <p className="font-bold text-[#1e293b]">
+                          {(analysis.coherence_check_result.equilibre_bilan?.total_actif || 0).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                      <div className="bg-purple-50 rounded p-2">
+                        <p className="text-purple-500">Total Passif</p>
+                        <p className="font-bold text-[#1e293b]">
+                          {(analysis.coherence_check_result.equilibre_bilan?.total_passif || 0).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Écart : {(analysis.coherence_check_result.equilibre_bilan?.ecart || 0).toLocaleString("fr-FR")}
+                      {" "}({analysis.coherence_check_result.equilibre_bilan?.ecart_pct || 0}%)
+                    </p>
+                  </div>
+
+                  {/* Doublons */}
+                  <div className="border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-[#1e293b]">Doublons d'écritures</p>
+                      <RiskBadge level={analysis.coherence_check_result.doublons?.risk_level || "VERT"} />
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">
+                      {analysis.coherence_check_result.doublons?.duplicates_count || 0} doublon(s) détecté(s)
+                      {" ("}
+                      {analysis.coherence_check_result.doublons?.exact_duplicates || 0} exact(s)
+                      {")"}
+                    </p>
+                    {analysis.coherence_check_result.doublons?.duplicates?.slice(0, 2).map((d: any, i: number) => (
+                      <div key={i} className={`text-xs border-l-2 pl-2 mb-1 ${d.severity === "ROUGE" ? "border-red-300 text-red-600" : "border-amber-300 text-amber-700"}`}>
+                        {d.type} — {d.account} {d.date ? `(${d.date})` : ""}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Réconciliation Balance Générale */}
+            {analysis.balance_reconciliation_result && !analysis.balance_reconciliation_result.error && (
+              <div className="card col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-[#1e293b]" />
+                    <h3 className="text-sm font-semibold text-[#1e293b]">Réconciliation Balance Générale ↔ FEC</h3>
+                  </div>
+                  <RiskBadge level={analysis.balance_reconciliation_result.risk_level} />
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 mb-4">
+                  {analysis.balance_reconciliation_result.interpretation}
+                </p>
+                <div className="grid grid-cols-4 gap-3 mb-4 text-xs">
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-gray-400">Comptes FEC</p>
+                    <p className="font-bold text-[#1e293b]">{analysis.balance_reconciliation_result.fec_summary?.accounts || 0}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-gray-400">Comptes Balance</p>
+                    <p className="font-bold text-[#1e293b]">{analysis.balance_reconciliation_result.balance_summary?.accounts || 0}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-gray-400">Écarts trouvés</p>
+                    <p className={`font-bold ${analysis.balance_reconciliation_result.discrepancies_count > 0 ? "text-red-600" : "text-green-700"}`}>
+                      {analysis.balance_reconciliation_result.discrepancies_count}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-gray-400">Écarts ROUGE</p>
+                    <p className="font-bold text-red-600">{analysis.balance_reconciliation_result.rouge_discrepancies || 0}</p>
+                  </div>
+                </div>
+                {analysis.balance_reconciliation_result.discrepancies?.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-gray-500">
+                          <th className="text-left py-1.5 px-2">Compte</th>
+                          <th className="text-left py-1.5 px-2">Type d'écart</th>
+                          <th className="text-right py-1.5 px-2">Solde FEC</th>
+                          <th className="text-right py-1.5 px-2">Solde Balance</th>
+                          <th className="text-right py-1.5 px-2">Écart</th>
+                          <th className="text-center py-1.5 px-2">Sévérité</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysis.balance_reconciliation_result.discrepancies.slice(0, 10).map((d: any, i: number) => (
+                          <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
+                            <td className="py-1.5 px-2 font-mono font-medium text-[#1e293b]">{d.account}</td>
+                            <td className="py-1.5 px-2 text-gray-500">{d.flag}</td>
+                            <td className="py-1.5 px-2 text-right">{d.fec?.solde_net?.toLocaleString("fr-FR")}</td>
+                            <td className="py-1.5 px-2 text-right">{d.balance?.solde_net?.toLocaleString("fr-FR")}</td>
+                            <td className="py-1.5 px-2 text-right font-semibold text-red-600">
+                              {d.ecart_solde?.toLocaleString("fr-FR")}
+                            </td>
+                            <td className="py-1.5 px-2 text-center">
+                              <RiskBadge level={d.severity} showDot={false} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Revue analytique */}
             {analysis.analytical_review?.comparison_n_vs_n1 && (
               <div className="card col-span-2">
