@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import {
   Upload, FileText, Trash2, Play, Loader2,
-  FileSpreadsheet, CheckCircle, Clock,
+  FileSpreadsheet, GitCompare, X,
 } from "lucide-react";
 import {
   uploadDocument, listDocuments, deleteDocument, createAnalysis,
@@ -12,11 +12,82 @@ import {
 import Sidebar from "@/components/dashboard/Sidebar";
 import { useRouter } from "next/navigation";
 
+interface AnalyseModalProps {
+  doc: any;
+  documents: any[];
+  onClose: () => void;
+  onConfirm: (docId: string, prevDocId?: string) => void;
+}
+
+function AnalyseModal({ doc, documents, onClose, onConfirm }: AnalyseModalProps) {
+  const [previousDocId, setPreviousDocId] = useState("");
+  const otherFecDocs = documents.filter(
+    (d) => d.id !== doc.id && d.document_type === "FEC"
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-[#1e293b]">Lancer l'analyse IA</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-sm text-gray-600 mb-4">
+          Document sélectionné :{" "}
+          <span className="font-medium text-[#1e293b]">{doc.original_filename}</span>
+          {doc.fiscal_year && <span className="text-gray-400"> — {doc.fiscal_year}</span>}
+        </p>
+
+        {otherFecDocs.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+              <GitCompare className="w-4 h-4" /> Comparer avec l'exercice N-1 (optionnel)
+            </label>
+            <select
+              value={previousDocId}
+              onChange={(e) => setPreviousDocId(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e293b]"
+            >
+              <option value="">— Analyse simple (sans comparaison N-1) —</option>
+              {otherFecDocs.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.original_filename}
+                  {d.fiscal_year ? ` (${d.fiscal_year})` : ""}
+                  {d.entity_name ? ` — ${d.entity_name}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              Sélectionnez le FEC de l'exercice précédent pour activer la revue analytique N vs N-1.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 btn-secondary text-sm py-2">
+            Annuler
+          </button>
+          <button
+            onClick={() => onConfirm(doc.id, previousDocId || undefined)}
+            className="flex-1 btn-primary text-sm py-2 flex items-center justify-center gap-2"
+          >
+            <Play className="w-4 h-4" /> Lancer l'analyse
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DocumentsPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [analysing, setAnalysing] = useState<string | null>(null);
+  const [analyseTarget, setAnalyseTarget] = useState<any | null>(null);
   const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear().toString());
   const [entityName, setEntityName] = useState("");
   const [docType, setDocType] = useState("FEC");
@@ -56,11 +127,12 @@ export default function DocumentsPage() {
     maxFiles: 1,
   });
 
-  const handleAnalyse = async (docId: string) => {
+  const handleAnalyseConfirm = async (docId: string, prevDocId?: string) => {
+    setAnalyseTarget(null);
     setAnalysing(docId);
     try {
-      const res = await createAnalysis(docId);
-      toast.success("Analyse lancée en arrière-plan");
+      const res = await createAnalysis(docId, prevDocId);
+      toast.success(prevDocId ? "Analyse N vs N-1 lancée" : "Analyse lancée en arrière-plan");
       router.push(`/analysis/${res.data.id}`);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Erreur lors du lancement");
@@ -82,6 +154,14 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
+      {analyseTarget && (
+        <AnalyseModal
+          doc={analyseTarget}
+          documents={documents}
+          onClose={() => setAnalyseTarget(null)}
+          onConfirm={handleAnalyseConfirm}
+        />
+      )}
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
         <div className="mb-8">
@@ -197,8 +277,8 @@ export default function DocumentsPage() {
                       <td className="py-3 px-3">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleAnalyse(doc.id)}
-                            disabled={analysing === doc.id}
+                            onClick={() => setAnalyseTarget(doc)}
+                            disabled={!!analysing}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1e293b] text-white rounded-lg text-xs font-medium hover:bg-[#334155] transition-colors disabled:opacity-50"
                           >
                             {analysing === doc.id ? (

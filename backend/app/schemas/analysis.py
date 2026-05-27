@@ -7,6 +7,7 @@ from app.models.analysis import AnalysisStatus, RiskLevel
 
 class AnalysisCreate(BaseModel):
     document_id: UUID
+    previous_document_id: Optional[UUID] = None  # FEC N-1 pour la revue analytique
 
 
 class AnomalyOut(BaseModel):

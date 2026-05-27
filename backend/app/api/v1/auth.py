@@ -4,17 +4,20 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import (
-    verify_password, create_access_token, create_refresh_token, decode_token,
+    verify_password, hash_password, create_access_token, create_refresh_token, decode_token,
     generate_totp_secret, get_totp_uri, generate_qr_code_base64, verify_totp,
 )
 from app.core.redis_client import blacklist_token, cache_set, cache_get
+from app.core.config import settings
 from app.middleware.audit_logger import log_action
 from app.models.user import User
 from app.schemas.auth import (
     LoginRequest, MFAVerifyRequest, TokenResponse, MFASetupResponse,
     MFAEnableRequest, RefreshRequest, PasswordChangeRequest,
+    ForgotPasswordRequest, ResetPasswordRequest,
 )
 from app.middleware.auth import get_current_user
+from app.services.email_service import send_password_reset_email
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
@@ -130,3 +133,59 @@ async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)
 
     access_token = create_access_token({"sub": str(user.id), "tenant": str(user.tenant_id), "role": user.role.value})
     return TokenResponse(access_token=access_token, refresh_token=body.refresh_token)
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Initie la réinitialisation de mot de passe.
+    Toujours renvoyer 200 pour ne pas divulguer si l'email existe.
+    """
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if user and user.is_active:
+        reset_token = str(uuid.uuid4())
+        ttl = settings.RESET_TOKEN_EXPIRE_MINUTES * 60
+        await cache_set(f"reset_pwd:{reset_token}", str(user.id), ttl=ttl)
+        await send_password_reset_email(user.email, user.full_name, reset_token)
+        await log_action(
+            db, "PASSWORD_RESET_REQUESTED",
+            user=user,
+            ip_address=request.client.host,
+        )
+        await db.commit()
+
+    return {"message": "Si votre adresse email est connue, vous recevrez un lien de réinitialisation."}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = await cache_get(f"reset_pwd:{body.token}")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lien invalide ou expiré")
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Le mot de passe doit contenir au moins 8 caractères")
+
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Utilisateur introuvable")
+
+    user.hashed_password = hash_password(body.new_password)
+    await log_action(db, "PASSWORD_RESET_COMPLETED", user=user, ip_address=request.client.host)
+    await db.commit()
+
+    # Invalider le token après usage
+    await cache_set(f"reset_pwd:{body.token}", "", ttl=1)
+
+    return {"message": "Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter."}

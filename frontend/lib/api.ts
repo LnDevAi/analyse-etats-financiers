@@ -43,6 +43,12 @@ export const getMfaSetup = () => api.get("/auth/mfa/setup");
 export const enableMfa = (totp_code: string) =>
   api.post("/auth/mfa/enable", { totp_code });
 
+export const forgotPassword = (email: string) =>
+  api.post("/auth/forgot-password", { email });
+
+export const resetPassword = (token: string, new_password: string) =>
+  api.post("/auth/reset-password", { token, new_password });
+
 // Users
 export const getMe = () => api.get("/users/me");
 export const listUsers = () => api.get("/users/");
@@ -58,8 +64,8 @@ export const listDocuments = () => api.get("/documents/");
 export const deleteDocument = (id: string) => api.delete(`/documents/${id}`);
 
 // Analysis
-export const createAnalysis = (document_id: string) =>
-  api.post("/analyses/", { document_id });
+export const createAnalysis = (document_id: string, previous_document_id?: string) =>
+  api.post("/analyses/", { document_id, previous_document_id: previous_document_id || undefined });
 
 export const listAnalyses = () => api.get("/analyses/");
 

@@ -29,6 +29,7 @@ async def run_full_analysis(
     document_id: UUID,
     tenant_id: UUID,
     db: AsyncSession,
+    previous_document_id: Optional[UUID] = None,
 ):
     """Exécute le pipeline IA complet sur un document FEC."""
     try:
@@ -78,8 +79,18 @@ async def run_full_analysis(
         # Module 3 : Isolation Forest
         isolation_forest_result = run_isolation_forest(df)
 
-        # Module 4 : Revue analytique
-        analytical_review = run_analytical_review(df)
+        # Module 4 : Revue analytique (avec N-1 si disponible)
+        df_previous = None
+        if previous_document_id:
+            prev_doc_result = await db.execute(select(Document).where(Document.id == previous_document_id))
+            prev_document = prev_doc_result.scalar_one_or_none()
+            if prev_document and os.path.exists(prev_document.storage_path):
+                with open(prev_document.storage_path, "rb") as f:
+                    prev_content = f.read()
+                df_previous, _ = parse_fec(prev_content)
+                df_previous, _ = anonymize_fec_dataframe(df_previous)
+                logger.info(f"FEC N-1 chargé pour la revue analytique ({len(df_previous)} lignes)")
+        analytical_review = run_analytical_review(df, df_previous)
 
         # Module 5 : Cycle Ventes
         cycle_ventes_result = run_cycle_ventes(df, fiscal_year)

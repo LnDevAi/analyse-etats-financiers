@@ -132,12 +132,14 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <p className="text-center text-xs text-gray-400 mt-4">
-                Pas encore inscrit ?{" "}
+              <div className="flex items-center justify-between mt-4 text-xs">
+                <a href="/auth/forgot-password" className="text-gray-400 hover:text-[#1e293b]">
+                  Mot de passe oublié ?
+                </a>
                 <a href="/auth/register" className="text-[#1e293b] font-medium hover:underline">
                   Créer un compte cabinet
                 </a>
-              </p>
+              </div>
             </>
           ) : (
             <>

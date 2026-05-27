@@ -39,6 +39,19 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 50
     UPLOAD_DIR: str = "/tmp/edefence_uploads"
 
+    # Email / SMTP
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@edefence.tech"
+    SMTP_USE_TLS: bool = False
+    SMTP_USE_STARTTLS: bool = True
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # Password reset
+    RESET_TOKEN_EXPIRE_MINUTES: int = 30
+
     class Config:
         env_file = ".env"
         case_sensitive = True

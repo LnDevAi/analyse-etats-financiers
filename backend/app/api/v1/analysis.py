@@ -35,6 +35,17 @@ async def create_analysis(
     if not document:
         raise HTTPException(status_code=404, detail="Document introuvable")
 
+    # Vérifier le document N-1 si fourni
+    if body.previous_document_id:
+        prev_doc_result = await db.execute(
+            select(Document).where(
+                Document.id == body.previous_document_id,
+                Document.tenant_id == current_user.tenant_id,
+            )
+        )
+        if not prev_doc_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Document N-1 introuvable")
+
     analysis = Analysis(
         tenant_id=current_user.tenant_id,
         document_id=body.document_id,
@@ -52,6 +63,7 @@ async def create_analysis(
         body.document_id,
         current_user.tenant_id,
         db,
+        body.previous_document_id,
     )
 
     return analysis
