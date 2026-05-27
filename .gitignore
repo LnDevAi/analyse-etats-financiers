@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Alembic
+alembic/versions/*.py
+
+# Node
+node_modules/
+.next/
+.env.local
+.env.production
+
+# Uploads / rapports générés
+/tmp/
+*.docx
+*.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+*.log

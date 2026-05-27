@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #1e293b;
+  --bg-base: #F8FAFC;
+  --risk-vert: #16a34a;
+  --risk-orange: #d97706;
+  --risk-rouge: #dc2626;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: #0f172a;
+  font-family: 'Inter', 'Calibri', system-ui, sans-serif;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+  }
+
+  .btn-primary {
+    @apply bg-navy-950 hover:bg-navy-900 text-white px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+
+  .risk-badge-vert {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800;
+  }
+
+  .risk-badge-orange {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800;
+  }
+
+  .risk-badge-rouge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800;
+  }
+}
