@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # Password reset
     RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # CinetPay
+    CINETPAY_API_KEY: str = ""
+    CINETPAY_SITE_ID: str = ""
+    BACKEND_URL: str = "http://localhost:8000"
+
     class Config:
         env_file = ".env"
         case_sensitive = True
