@@ -3,7 +3,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Shield, LayoutDashboard, FileText, BarChart3,
-  Users, LogOut, GitCompare, ScrollText, ChevronRight, FolderOpen,
+  Users, LogOut, GitCompare, ChevronRight,
+  FolderOpen, Building2, CreditCard,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/lib/store";
@@ -16,6 +17,8 @@ const navItems = [
   { href: "/analysis", label: "Analyses IA", icon: BarChart3 },
   { href: "/ag-analysis", label: "Analyse AG", icon: FolderOpen },
   { href: "/cross-check", label: "Cross-Checking", icon: GitCompare },
+  { href: "/crm", label: "CRM Clients", icon: Building2 },
+  { href: "/billing", label: "Facturation", icon: CreditCard },
   { href: "/users", label: "Équipe", icon: Users },
 ];
 
@@ -49,7 +52,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
@@ -69,6 +72,22 @@ export default function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Portail client (séparateur) */}
+        <div className="pt-3 mt-3 border-t border-white/5">
+          <Link
+            href="/account/billing"
+            className={clsx(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+              pathname.startsWith("/account/billing")
+                ? "bg-white/15 text-white"
+                : "text-white/40 hover:bg-white/10 hover:text-white/70"
+            )}
+          >
+            <CreditCard className="w-4 h-4 flex-shrink-0" />
+            <span>Mon abonnement</span>
+          </Link>
+        </div>
       </nav>
 
       {/* User section */}
