@@ -102,3 +102,26 @@ export const createAGAnalysis = (data: {
 
 export const listAGAnalyses = () => api.get("/ag-analyses/");
 export const getAGAnalysis = (id: string) => api.get(`/ag-analyses/${id}`);
+
+// CRM
+export const listCRMClients = (params?: { stage?: string; lifecycle?: string; search?: string }) =>
+  api.get("/crm/clients", { params });
+export const getCRMClient = (id: string) => api.get(`/crm/clients/${id}`);
+export const createCRMClient = (data: any) => api.post("/crm/clients", data);
+export const updateCRMClient = (id: string, data: any) => api.patch(`/crm/clients/${id}`, data);
+export const deleteCRMClient = (id: string) => api.delete(`/crm/clients/${id}`);
+export const getCRMPipelineStats = () => api.get("/crm/pipeline/stats");
+export const addCRMContact = (clientId: string, data: any) => api.post(`/crm/clients/${clientId}/contacts`, data);
+export const deleteCRMContact = (contactId: string) => api.delete(`/crm/contacts/${contactId}`);
+export const listCRMActivities = (clientId: string) => api.get(`/crm/clients/${clientId}/activities`);
+export const addCRMActivity = (clientId: string, data: any) => api.post(`/crm/clients/${clientId}/activities`, data);
+
+// Billing
+export const listPlans = () => api.get("/billing/plans");
+export const getMySubscription = () => api.get("/billing/subscription");
+export const createSubscription = (data: any) => api.post("/billing/subscription", data);
+export const upgradeSubscription = (data: any) => api.patch("/billing/subscription/upgrade", data);
+export const listInvoices = () => api.get("/billing/invoices");
+export const initiatePayment = (data: any) => api.post("/billing/payments/initiate", data);
+export const listPayments = () => api.get("/billing/payments");
+export const getBillingDashboard = () => api.get("/billing/dashboard");
