@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, Download, RefreshCw, CheckCircle,
-  AlertTriangle, TrendingUp, Scale, Zap,
+  AlertTriangle, TrendingUp, Scale, Zap, BarChart2,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -537,6 +537,52 @@ export default function AnalysisDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Scores par module */}
+            <div className="card col-span-2">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 className="w-4 h-4 text-[#1e293b]" />
+                <h3 className="text-sm font-semibold text-[#1e293b]">Scores par module d'analyse</h3>
+              </div>
+              {(() => {
+                const RISK_SCORE: Record<string, number> = { VERT: 95, ORANGE: 55, ROUGE: 15 };
+                const RISK_COLOR: Record<string, string> = { VERT: "#22c55e", ORANGE: "#f97316", ROUGE: "#ef4444" };
+                const modules = [
+                  { name: "Vérification intrinsèque", level: analysis.intrinsic_check?.valid === false ? "ROUGE" : analysis.intrinsic_check ? "VERT" : null },
+                  { name: "Cohérence SYSCOHADA", level: analysis.coherence_check_result?.risk_level ?? null },
+                  { name: "Loi de Benford", level: analysis.benford_result?.risk_level ?? null },
+                  { name: "Isolation Forest", level: analysis.isolation_forest_result?.risk_level ?? null },
+                  { name: "Revue analytique", level: analysis.analytical_review?.risk_level ?? null },
+                  { name: "Cycle ventes", level: analysis.cycle_ventes_result?.risk_level ?? null },
+                  { name: "Cycle trésorerie", level: analysis.cycle_tresorerie_result?.risk_level ?? null },
+                ].filter((m) => m.level !== null);
+                const barData = modules.map((m) => ({
+                  name: m.name,
+                  score: RISK_SCORE[m.level!] ?? 50,
+                  fill: RISK_COLOR[m.level!] ?? "#64748b",
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} unit="%" />
+                      <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 11, fill: "#475569" }} />
+                      <Tooltip
+                        formatter={(v: number, _: string, props: any) => [
+                          `${v}% — ${modules.find(m => m.name === props.payload.name)?.level}`,
+                          "Score",
+                        ]}
+                      />
+                      <Bar dataKey="score" radius={[0, 4, 4, 0]}>
+                        {barData.map((d, i) => (
+                          <Cell key={i} fill={d.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
 
             {/* Note de synthèse complète */}
             {analysis.ai_synthesis && (

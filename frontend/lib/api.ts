@@ -90,3 +90,15 @@ export const downloadXlsx = (id: string) =>
 // Tenant registration
 export const registerTenant = (data: any) =>
   api.post("/tenants/register", data);
+
+// AG Analysis
+export const createAGAnalysis = (data: {
+  fec_document_id: string;
+  budget_document_id?: string;
+  social_document_id?: string;
+  marches_document_id?: string;
+  activites_document_id?: string;
+}) => api.post("/ag-analyses/", data);
+
+export const listAGAnalyses = () => api.get("/ag-analyses/");
+export const getAGAnalysis = (id: string) => api.get(`/ag-analyses/${id}`);
