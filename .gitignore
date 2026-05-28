@@ -17,6 +17,8 @@ node_modules/
 .next/
 .env.local
 .env.production
+frontend/next-env.d.ts
+frontend/tsconfig.tsbuildinfo
 
 # Uploads / rapports générés
 /tmp/
