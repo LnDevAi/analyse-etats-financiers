@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 
@@ -60,11 +61,15 @@ class AnalyseFinanciere {
                   json['total_amount'] ??
                   0) as num)
           .toDouble(),
-      fichierFec: json['fichier_fec']?.toString() ?? json['fichierFec']?.toString(),
-      resumeIa: json['resume_ia']?.toString() ?? json['resumeIa']?.toString(),
+      fichierFec:
+          json['fichier_fec']?.toString() ?? json['fichierFec']?.toString(),
+      resumeIa:
+          json['resume_ia']?.toString() ?? json['resumeIa']?.toString(),
     );
   }
 }
+
+// ─── Ratios financiers ───────────────────────────────────────────────────────
 
 class RatioFinancier {
   final String nom;
@@ -86,7 +91,7 @@ class RatioFinancier {
       nom: json['nom']?.toString() ?? json['name']?.toString() ?? '',
       valeur: ((json['valeur'] ?? json['value'] ?? 0) as num).toDouble(),
       valeurReference:
-          json['valeur_reference'] != null || json['reference'] != null
+          (json['valeur_reference'] != null || json['reference'] != null)
               ? ((json['valeur_reference'] ?? json['reference']) as num)
                   .toDouble()
               : null,
@@ -95,6 +100,8 @@ class RatioFinancier {
     );
   }
 }
+
+// ─── Détail analyse ──────────────────────────────────────────────────────────
 
 class AnalyseDetail extends AnalyseFinanciere {
   final List<RatioFinancier> ratios;
@@ -137,7 +144,34 @@ class AnalyseDetail extends AnalyseFinanciere {
     );
   }
 
-  /// Ratios par défaut de démonstration si l'API ne les fournit pas
+  static const List<RatioFinancier> _ratiosDefaut = [
+    RatioFinancier(
+      nom: 'Liquidité générale',
+      valeur: 1.45,
+      valeurReference: 1.0,
+      interpretation: 'La liquidité est satisfaisante',
+    ),
+    RatioFinancier(
+      nom: 'Solvabilité',
+      valeur: 0.62,
+      valeurReference: 0.5,
+      interpretation: 'Niveau de solvabilité acceptable',
+    ),
+    RatioFinancier(
+      nom: 'Rentabilité nette',
+      valeur: 8.3,
+      valeurReference: 5.0,
+      interpretation: 'Bonne rentabilité nette',
+      unite: '%',
+    ),
+    RatioFinancier(
+      nom: 'Autonomie financière',
+      valeur: 0.48,
+      valeurReference: 0.3,
+      interpretation: 'Bonne autonomie financière',
+    ),
+  ];
+
   AnalyseDetail withDefaultRatiosIfEmpty() {
     if (ratios.isNotEmpty) return this;
     return AnalyseDetail(
@@ -152,36 +186,12 @@ class AnalyseDetail extends AnalyseFinanciere {
       montantTotal: montantTotal,
       fichierFec: fichierFec,
       resumeIa: resumeIa,
-      ratios: const [
-        RatioFinancier(
-          nom: 'Liquidité générale',
-          valeur: 1.45,
-          valeurReference: 1.0,
-          interpretation: 'La liquidité est satisfaisante',
-        ),
-        RatioFinancier(
-          nom: 'Solvabilité',
-          valeur: 0.62,
-          valeurReference: 0.5,
-          interpretation: 'Niveau de solvabilité acceptable',
-        ),
-        RatioFinancier(
-          nom: 'Rentabilité nette',
-          valeur: 8.3,
-          valeurReference: 5.0,
-          interpretation: 'Bonne rentabilité nette',
-          unite: '%',
-        ),
-        RatioFinancier(
-          nom: 'Autonomie financière',
-          valeur: 0.48,
-          valeurReference: 0.3,
-          interpretation: 'Bonne autonomie financière',
-        ),
-      ],
+      ratios: _ratiosDefaut,
     );
   }
 }
+
+// ─── Anomalie ────────────────────────────────────────────────────────────────
 
 class AnomalieItem {
   final String id;
@@ -246,9 +256,9 @@ final analysesProvider = FutureProvider<List<AnalyseFinanciere>>((ref) async {
         .map((e) => AnalyseFinanciere.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-  // Cas où l'API retourne {results: [...]} ou {data: [...]}
   if (data is Map) {
-    final list = (data['results'] ?? data['data'] ?? data['items'] ?? []) as List;
+    final list =
+        (data['results'] ?? data['data'] ?? data['items'] ?? []) as List;
     return list
         .map((e) => AnalyseFinanciere.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -264,13 +274,12 @@ final analyseDetailProvider =
   return AnalyseDetail.fromJson(data).withDefaultRatiosIfEmpty();
 });
 
-/// Anomalies d'une analyse
+/// Anomalies d'une analyse (ou toutes les anomalies si analyseId est null)
 final anomaliesProvider =
     FutureProvider.family<List<AnomalieItem>, String?>((ref, analyseId) async {
   final api = ref.watch(_apiClientProvider);
-  final path = analyseId != null
-      ? '/analyses/$analyseId/anomalies'
-      : '/anomalies';
+  final path =
+      analyseId != null ? '/analyses/$analyseId/anomalies' : '/anomalies';
   final data = await api.get(path);
   if (data is List) {
     return data
@@ -278,7 +287,8 @@ final anomaliesProvider =
         .toList();
   }
   if (data is Map) {
-    final list = (data['results'] ?? data['data'] ?? data['items'] ?? []) as List;
+    final list =
+        (data['results'] ?? data['data'] ?? data['items'] ?? []) as List;
     return list
         .map((e) => AnomalieItem.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -286,7 +296,8 @@ final anomaliesProvider =
   return [];
 });
 
-/// Provider pour créer une nouvelle analyse (StateNotifier)
+// ─── Création d'analyse (StateNotifier) ─────────────────────────────────────
+
 class NewAnalysisState {
   final bool isLoading;
   final bool isSuccess;
@@ -332,12 +343,19 @@ class NewAnalysisNotifier extends StateNotifier<NewAnalysisState> {
     state = state.copyWith(isLoading: true, clearError: true, isSuccess: false);
 
     try {
-      final formData = dio_FormData(nomEntreprise, exercice, cheminFichier, nomFichier);
+      final formData = FormData.fromMap({
+        'nom_entreprise': nomEntreprise,
+        'exercice': exercice,
+        'fichier_fec': await MultipartFile.fromFile(
+          cheminFichier,
+          filename: nomFichier,
+        ),
+      });
+
       final data =
           await _apiClient.postFormData('/analyses', formData) as Map<String, dynamic>;
       final id = data['id']?.toString();
 
-      // Invalider le cache des analyses
       _ref.invalidate(analysesProvider);
 
       state = state.copyWith(
@@ -361,20 +379,6 @@ class NewAnalysisNotifier extends StateNotifier<NewAnalysisState> {
   void reset() {
     state = const NewAnalysisState();
   }
-}
-
-// Import nécessaire pour FormData
-import 'package:dio/dio.dart' show FormData, MultipartFile;
-
-FormData dio_FormData(String nomEntreprise, String exercice, String cheminFichier, String nomFichier) {
-  return FormData.fromMap({
-    'nom_entreprise': nomEntreprise,
-    'exercice': exercice,
-    'fichier_fec': MultipartFile.fromFileSync(
-      cheminFichier,
-      filename: nomFichier,
-    ),
-  });
 }
 
 final newAnalysisProvider =
