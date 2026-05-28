@@ -135,8 +135,8 @@ export default function CrossCheckPage() {
                       {result.discrepancies.map((d: any, i: number) => (
                         <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
                           <td className="py-2 px-2 font-mono font-semibold text-[#1e293b]">{d.account}</td>
-                          <td className="py-2 px-2 text-right">{Object.values(d).find((v, k) => Object.keys(d)[k].startsWith('solde_') && Object.keys(d)[k].endsWith('_a'))?.toLocaleString("fr-FR")}</td>
-                          <td className="py-2 px-2 text-right">{Object.values(d).find((v, k) => Object.keys(d)[k].startsWith('solde_') && Object.keys(d)[k].endsWith('_b'))?.toLocaleString("fr-FR")}</td>
+                          <td className="py-2 px-2 text-right">{(Object.entries(d).filter(([k]) => k.startsWith('solde_'))[0]?.[1] as number | undefined)?.toLocaleString("fr-FR")}</td>
+                          <td className="py-2 px-2 text-right">{(Object.entries(d).filter(([k]) => k.startsWith('solde_'))[1]?.[1] as number | undefined)?.toLocaleString("fr-FR")}</td>
                           <td className="py-2 px-2 text-right font-semibold">{d.difference_abs?.toLocaleString("fr-FR")}</td>
                           <td className="py-2 px-2 text-right font-semibold text-red-600">{d.difference_pct?.toFixed(1)}%</td>
                           <td className="py-2 px-2 text-center text-gray-500">{d.flag?.replace(/_/g, " ")}</td>
