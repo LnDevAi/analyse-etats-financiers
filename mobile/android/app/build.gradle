@@ -1,37 +1,71 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0.0'
 }
 
 android {
-    namespace 'tech.edefence.analyses'
+    namespace "tech.edefence.analyses"
     compileSdk 34
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
     defaultConfig {
-        applicationId 'tech.edefence.analyses'
+        applicationId "tech.edefence.analyses"
         minSdk 23
         targetSdk 34
-        versionCode 1
-        versionName '1.0.0'
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        multiDexEnabled true
     }
 
     buildTypes {
         release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
         }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = '17'
+        debug {
+            applicationIdSuffix ".debug"
+            debuggable true
+        }
     }
 }
 
+flutter {
+    source '../..'
+}
+
 dependencies {
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.multidex:multidex:2.0.1'
 }
