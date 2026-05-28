@@ -39,7 +39,7 @@ def csv_budget(rows: list[str]) -> bytes:
 
 
 def csv_social(masse: float) -> bytes:
-    return f"Masse salariale;{masse:.0f}\n".encode("utf-8")
+    return f"rubrique;montant\nMasse salariale;{masse:.0f}\n".encode("utf-8")
 
 
 def csv_marches(rows: list[str]) -> bytes:

@@ -9,7 +9,7 @@ def make_benford_df(n=500) -> pd.DataFrame:
     """Génère un FEC synthétique suivant la loi de Benford."""
     rng = np.random.default_rng(42)
     digits = rng.choice(list(BENFORD_DISTRIBUTION.keys()), size=n, p=list(BENFORD_DISTRIBUTION.values()))
-    amounts = [d * 10 ** rng.integers(1, 6) + rng.random() * 1000 for d in digits]
+    amounts = [float(d * (10 ** int(rng.integers(1, 7)))) for d in digits]
     return pd.DataFrame({"Debit": amounts, "Credit": [0.0] * n})
 
 

@@ -7,29 +7,29 @@ from typing import Tuple
 import pandas as pd
 
 
-# Patterns regex robustes pour les données sensibles UEMOA/France
+# Patterns regex : (pattern, remplacement, flags)
+# SIRET avant TEL pour éviter que les 14 chiffres SIRET soient masqués comme téléphone.
+# NOM_PROPRE sans IGNORECASE : la majuscule initiale est discriminante.
 PATTERNS = [
-    # Email
-    (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]'),
+    (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', re.IGNORECASE),
+    # SIRET France (14 chiffres) — doit précéder TEL
+    (r'\b\d{3}[\s.-]?\d{3}[\s.-]?\d{3}[\s.-]?\d{5}\b', '[SIRET]', 0),
     # Téléphone (formats UEMOA + international)
-    (r'\b(?:\+226|\+225|\+221|\+237|\+33|00226|00225)?[\s.-]?(?:\d[\s.-]?){8,12}\b', '[TEL]'),
-    # SIRET France (14 chiffres)
-    (r'\b\d{3}[\s.-]?\d{3}[\s.-]?\d{3}[\s.-]?\d{5}\b', '[SIRET]'),
-    # IFU Burkina (format 8-12 chiffres)
-    (r'\bIFU\s*:?\s*\d{8,12}\b', '[IFU]'),
-    (r'\b\d{8,12}[A-Z]\b', '[IFU]'),
+    (r'\b(?:\+226|\+225|\+221|\+237|\+33|00226|00225)?[\s.-]?(?:\d[\s.-]?){8,12}\b', '[TEL]', re.IGNORECASE),
+    # IFU Burkina
+    (r'\bIFU\s*:?\s*\d{8,12}\b', '[IFU]', re.IGNORECASE),
+    (r'\b\d{8,12}[A-Z]\b', '[IFU]', re.IGNORECASE),
     # RCCM
-    (r'\bRCCM\s*[:\s]?\w{2,4}\d{4}[A-Z]\d+\b', '[RCCM]'),
-    # Montants avec devises (ne pas anonymiser mais normaliser)
-    # Noms propres : Majuscule + longueur (approximatif sans modèle NER)
-    (r'\b([A-ZÉÀÈÊÎÔÙÛÜ][a-zéàèêîôùûü]{2,}\s){2,3}([A-ZÉÀÈÊÎÔÙÛÜ][a-zéàèêîôùûü]{2,})\b', '[NOM_PROPRE]'),
+    (r'\bRCCM\s*[:\s]?\w{2,4}\d{4}[A-Z]\d+\b', '[RCCM]', re.IGNORECASE),
+    # Noms propres (majuscule obligatoire — pas de IGNORECASE pour éviter les faux positifs)
+    (r'\b([A-ZÉÀÈÊÎÔÙÛÜ][a-zéàèêîôùûü]{2,}\s){2,3}([A-ZÉÀÈÊÎÔÙÛÜ][a-zéàèêîôùûü]{2,})\b', '[NOM_PROPRE]', 0),
     # Adresses
-    (r'\b\d{1,4}[,\s]+(?:rue|avenue|boulevard|av\.|bd\.|bp|B\.P\.|quartier|cité|secteur)[^,\n]{5,50}', '[ADRESSE]'),
-    # Numéros de compte bancaire (format IBAN ou local)
-    (r'\b[A-Z]{2}\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{0,4}\b', '[IBAN]'),
+    (r'\b\d{1,4}[,\s]+(?:rue|avenue|boulevard|av\.|bd\.|bp|B\.P\.|quartier|cité|secteur)[^,\n]{5,50}', '[ADRESSE]', re.IGNORECASE),
+    # IBAN
+    (r'\b[A-Z]{2}\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{0,4}\b', '[IBAN]', re.IGNORECASE),
 ]
 
-COMPILED_PATTERNS = [(re.compile(p, re.IGNORECASE), repl) for p, repl in PATTERNS]
+COMPILED_PATTERNS = [(re.compile(p, flags), repl) for p, repl, flags in PATTERNS]
 
 
 def anonymize_text(text: str) -> Tuple[str, int]:

@@ -43,6 +43,7 @@ def parse_fec(content: bytes) -> Tuple[pd.DataFrame, dict]:
                 .str.replace(" ", "", regex=False)
                 .pipe(pd.to_numeric, errors="coerce")
                 .fillna(0.0)
+                .astype(float)
             )
 
     if "EcritureDate" in df.columns:
@@ -84,7 +85,7 @@ def validate_partie_double(df: pd.DataFrame) -> dict:
         unbalanced_list = []
 
     return {
-        "valid": diff <= tolerance,
+        "valid": bool(diff <= tolerance),
         "total_debit": round(total_debit, 2),
         "total_credit": round(total_credit, 2),
         "difference": round(diff, 2),

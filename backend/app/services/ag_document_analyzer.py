@@ -112,13 +112,24 @@ def _parse_budget_table(tables: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
 
 def run_budget_execution_analysis(
     df_fec: pd.DataFrame,
-    budget_content: bytes,
+    budget_content: Optional[bytes],
     budget_filename: str,
 ) -> Dict[str, Any]:
     """
     Compare le budget alloué et le réalisé déclaré (dans le rapport)
     avec le réalisé réel issu du FEC, par classe de comptes SYSCOHADA.
     """
+    if not budget_content:
+        return {
+            "coherence_score": 1.0,
+            "risk_level": "VERT",
+            "table_found": False,
+            "comparaison_par_classe": {},
+            "ecarts_significatifs": [],
+            "ecarts_count": 0,
+            "interpretation": "Aucun document budgétaire fourni.",
+        }
+
     extracted = extract_document(budget_content, budget_filename)
     tables = extracted["tables"]
     amounts = extracted["amounts_found"]
@@ -126,8 +137,8 @@ def run_budget_execution_analysis(
     fec_by_class = _fec_totals_by_class(df_fec)
     budget_table = _parse_budget_table(tables)
 
-    comparisons = []
-    discrepancies = []
+    comparaison_par_classe: Dict[str, Any] = {}
+    ecarts_significatifs = []
 
     # Comparaison structurée si tableau trouvé
     if budget_table is not None:
@@ -150,60 +161,69 @@ def run_budget_execution_analysis(
             ecart = round(abs(realise_doc - fec_realise), 2)
             ecart_pct = round(ecart / max(realise_doc, 1) * 100, 1)
 
-            entry = {
+            key = classe_match or rubrique
+            comparaison_par_classe[key] = {
                 "rubrique": rubrique,
-                "classe_fec": classe_match,
-                "budget_alloue": round(budget_alloue, 2),
-                "realise_rapport": round(realise_doc, 2),
+                "budget_prevu": round(budget_alloue, 2),
+                "realise_doc": round(realise_doc, 2),
                 "realise_fec": round(fec_realise, 2),
                 "taux_execution_rapport": taux_execution_doc,
                 "taux_execution_fec": taux_execution_fec,
                 "ecart": ecart,
                 "ecart_pct": ecart_pct,
             }
-            comparisons.append(entry)
 
             if ecart_pct > 5 and ecart > 500_000:
                 severity = "ROUGE" if ecart_pct > 20 else "ORANGE"
-                discrepancies.append({**entry, "severity": severity,
-                    "description": f"Écart {ecart_pct}% entre rapport budgétaire et FEC pour '{rubrique}'"})
+                ecarts_significatifs.append({
+                    "rubrique": rubrique,
+                    "ecart": ecart,
+                    "ecart_pct": ecart_pct,
+                    "severity": severity,
+                    "description": f"Écart {ecart_pct}% entre rapport budgétaire et FEC pour '{rubrique}'",
+                })
 
     # Fallback : utiliser les montants extraits du texte
     total_budget_text = sum(a["value"] for a in amounts if "budget" in a["context"].lower())
     total_realise_text = sum(a["value"] for a in amounts
                              if any(k in a["context"].lower() for k in ["réalisé", "réalisation", "exécuté"]))
 
-    # Totaux FEC classes 6 (charges) comme proxy du réalisé
     fec_charges_total = sum(d["total_debit"] for k, d in fec_by_class.items() if k == "6")
 
-    rouge_count = sum(1 for d in discrepancies if d["severity"] == "ROUGE")
-    risk_level = "VERT" if not discrepancies else ("ROUGE" if rouge_count > 0 else "ORANGE")
+    rouge_count = sum(1 for d in ecarts_significatifs if d["severity"] == "ROUGE")
+    risk_level = "VERT" if not ecarts_significatifs else ("ROUGE" if rouge_count > 0 else "ORANGE")
+
+    score_map = {"VERT": 1.0, "ORANGE": 0.5, "ROUGE": 0.0}
+    coherence_score = score_map[risk_level]
+    if risk_level == "ORANGE" and ecarts_significatifs:
+        coherence_score = max(0.0, 1.0 - len(ecarts_significatifs) * 0.1)
 
     return {
+        "coherence_score": round(coherence_score, 2),
         "risk_level": risk_level,
         "table_found": budget_table is not None,
-        "comparisons": comparisons[:20],
-        "discrepancies": discrepancies[:10],
-        "discrepancies_count": len(discrepancies),
+        "comparaison_par_classe": comparaison_par_classe,
+        "ecarts_significatifs": ecarts_significatifs[:10],
+        "ecarts_count": len(ecarts_significatifs),
         "summary": {
             "total_budget_mentionne": round(total_budget_text, 2),
             "total_realise_mentionne": round(total_realise_text, 2),
             "total_charges_fec": round(fec_charges_total, 2),
             "fec_by_class": fec_by_class,
         },
-        "interpretation": _interpret_budget(discrepancies, rouge_count, budget_table is not None),
+        "interpretation": _interpret_budget(ecarts_significatifs, rouge_count, budget_table is not None),
     }
 
 
-def _interpret_budget(discrepancies, rouge_count, has_table) -> str:
+def _interpret_budget(ecarts, rouge_count, has_table) -> str:
     if not has_table:
         return "Aucun tableau budgétaire structuré détecté — analyse basée sur les montants textuels."
-    if not discrepancies:
+    if not ecarts:
         return "Cohérence validée : les réalisations du rapport budgétaire correspondent aux mouvements du FEC."
     if rouge_count > 0:
         return (f"ALERTE : {rouge_count} écart(s) majeur(s) entre le rapport budgétaire et le FEC. "
                 "Possible sur/sous-déclaration de dépenses.")
-    return f"{len(discrepancies)} écart(s) modéré(s) détecté(s) entre le rapport et le FEC."
+    return f"{len(ecarts)} écart(s) modéré(s) détecté(s) entre le rapport et le FEC."
 
 
 # ─── 2. Bilan social ─────────────────────────────────────────────────────────
@@ -219,13 +239,26 @@ SOCIAL_PATTERNS = {
 
 def run_masse_salariale_check(
     df_fec: pd.DataFrame,
-    social_content: bytes,
+    social_content: Optional[bytes],
     social_filename: str,
 ) -> Dict[str, Any]:
     """
     Compare la masse salariale déclarée dans le bilan social
     avec les charges de personnel enregistrées dans le FEC (comptes 66x).
     """
+    fec_masse_salariale = _fec_accounts_total(df_fec, PERSONNEL_ACCOUNTS, "debit")
+
+    if not social_content:
+        return {
+            "coherence_score": 1.0,
+            "risk_level": "VERT",
+            "masse_salariale_document": None,
+            "masse_salariale_fec": round(fec_masse_salariale, 2),
+            "ecart": 0.0,
+            "ecart_pct": 0.0,
+            "interpretation": "Aucun bilan social fourni.",
+        }
+
     extracted = extract_document(social_content, social_filename)
     text = extracted["text_preview"] + " " + " ".join(
         [a["context"] for a in extracted["amounts_found"]]
@@ -251,15 +284,15 @@ def run_masse_salariale_check(
                        if any(k in a["context"].lower() for k in ["salarial", "personnel", "salaire"])]
         masse_salariale_doc = max(sal_amounts) if sal_amounts else None
 
-    # Masse salariale FEC : comptes 66x
-    fec_masse_salariale = _fec_accounts_total(df_fec, PERSONNEL_ACCOUNTS, "debit")
-
     ecart = round(abs((masse_salariale_doc or 0) - fec_masse_salariale), 2)
     ecart_pct = round(ecart / max(masse_salariale_doc or 1, fec_masse_salariale, 1) * 100, 1)
 
     risk_level = "VERT"
     if masse_salariale_doc and ecart_pct > 10:
         risk_level = "ROUGE" if ecart_pct > 25 else "ORANGE"
+
+    score_map = {"VERT": 1.0, "ORANGE": 0.5, "ROUGE": 0.0}
+    coherence_score = round(max(0.0, 1.0 - ecart_pct / 100), 2) if masse_salariale_doc else 1.0
 
     # Détail par sous-compte 66x
     detail_66x = []
@@ -275,22 +308,27 @@ def run_masse_salariale_check(
                 "nb_ecritures": int(row["nb"]),
             })
 
+    if risk_level == "VERT":
+        ms_doc_fmt = f"{masse_salariale_doc:,.0f}" if masse_salariale_doc is not None else "N/A"
+        interpretation = f"Masse salariale cohérente : bilan social {ms_doc_fmt} ≈ FEC {fec_masse_salariale:,.0f} FCFA."
+    else:
+        ms_doc_fmt = f"{masse_salariale_doc:,.0f}" if masse_salariale_doc is not None else "N/A"
+        interpretation = (
+            f"ÉCART {'CRITIQUE' if risk_level == 'ROUGE' else 'MODÉRÉ'} : "
+            f"Bilan social {ms_doc_fmt} vs FEC {fec_masse_salariale:,.0f} FCFA (écart {ecart_pct}%)."
+        )
+
     return {
+        "coherence_score": coherence_score,
         "risk_level": risk_level,
-        "masse_salariale_doc": masse_salariale_doc,
+        "masse_salariale_document": masse_salariale_doc,
         "masse_salariale_fec": round(fec_masse_salariale, 2),
         "ecart": ecart,
         "ecart_pct": ecart_pct,
         "effectif_declare": metrics.get("effectif_total"),
         "charges_sociales_doc": metrics.get("charges_sociales"),
         "detail_personnel_fec": detail_66x,
-        "interpretation": (
-            f"Masse salariale cohérente : bilan social {masse_salariale_doc:,.0f} ≈ FEC {fec_masse_salariale:,.0f} FCFA."
-            if risk_level == "VERT" else
-            f"ÉCART {'CRITIQUE' if risk_level == 'ROUGE' else 'MODÉRÉ'} : "
-            f"Bilan social {masse_salariale_doc or 'N/A':,} vs FEC {fec_masse_salariale:,.0f} FCFA "
-            f"(écart {ecart_pct}%)."
-        ),
+        "interpretation": interpretation,
     }
 
 
@@ -325,13 +363,30 @@ def _parse_marches_table(tables: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
 
 def run_marches_check(
     df_fec: pd.DataFrame,
-    marches_content: bytes,
+    marches_content: Optional[bytes],
     marches_filename: str,
 ) -> Dict[str, Any]:
     """
     Compare les montants du plan de passation des marchés
-    avec les paiements fournisseurs dans le FEC (comptes 40x + achats 60x).
+    avec les factures fournisseurs dans le FEC (crédits 40x + débits 60x).
     """
+    fec_fournisseurs = _fec_accounts_total(df_fec, FOURNISSEURS_ACCOUNTS, "credit")
+    fec_achats = _fec_accounts_total(df_fec, ACHATS_ACCOUNTS, "debit")
+    fec_total_achats = round(fec_fournisseurs + fec_achats, 2)
+
+    if not marches_content:
+        return {
+            "coherence_score": 1.0,
+            "risk_level": "VERT",
+            "total_marches_doc": 0.0,
+            "total_achats_fec": fec_total_achats,
+            "ecart": 0.0,
+            "ecart_pct": 0.0,
+            "nb_marches": 0,
+            "marches_compares": [],
+            "interpretation": "Aucun plan de passation des marchés fourni.",
+        }
+
     extracted = extract_document(marches_content, marches_filename)
     tables = extracted["tables"]
     amounts = extracted["amounts_found"]
@@ -354,11 +409,6 @@ def run_marches_check(
                           if any(k in a["context"].lower() for k in ["marché", "marche", "contrat", "prestataire"])]
         total_marches_doc = sum(marche_amounts)
 
-    # Paiements fournisseurs FEC : crédits comptes 40x (décaissements = débit trésorerie, crédit fournisseur → débit fournisseur à l'apurement)
-    fec_fournisseurs = _fec_accounts_total(df_fec, FOURNISSEURS_ACCOUNTS, "debit")
-    fec_achats = _fec_accounts_total(df_fec, ACHATS_ACCOUNTS, "debit")
-    fec_total_achats = round(fec_fournisseurs + fec_achats, 2)
-
     ecart = round(abs(total_marches_doc - fec_total_achats), 2)
     ecart_pct = round(ecart / max(total_marches_doc, 1) * 100, 1) if total_marches_doc > 0 else 0.0
 
@@ -366,7 +416,8 @@ def run_marches_check(
     if total_marches_doc > 0 and ecart_pct > 15:
         risk_level = "ROUGE" if ecart_pct > 30 else "ORANGE"
 
-    # Distribution par tranche de montant
+    coherence_score = round(max(0.0, 1.0 - ecart_pct / 100), 2) if total_marches_doc > 0 else 1.0
+
     tranches = {"< 5M": 0, "5–50M": 0, "50–500M": 0, "> 500M": 0}
     for m in marches_list:
         v = m["montant"]
@@ -380,13 +431,14 @@ def run_marches_check(
             tranches["> 500M"] += 1
 
     return {
+        "coherence_score": coherence_score,
         "risk_level": risk_level,
         "total_marches_doc": round(total_marches_doc, 2),
         "total_achats_fec": fec_total_achats,
         "ecart": ecart,
         "ecart_pct": ecart_pct,
         "nb_marches": len(marches_list),
-        "marches_sample": marches_list[:15],
+        "marches_compares": marches_list[:15],
         "tranches_montant": tranches,
         "interpretation": (
             "Cohérence marchés/FEC validée." if risk_level == "VERT" else
@@ -401,20 +453,37 @@ def run_marches_check(
 
 def run_activites_check(
     df_fec: pd.DataFrame,
-    activites_content: bytes,
+    activites_content: Optional[bytes],
     activites_filename: str,
 ) -> Dict[str, Any]:
     """
     Extrait les montants cités dans le rapport d'activités
     et tente de les retrouver dans le FEC.
     """
+    if not activites_content:
+        return {
+            "coherence_score": 1.0,
+            "risk_level": "VERT",
+            "amounts_extracted": 0,
+            "matched_count": 0,
+            "unmatched_count": 0,
+            "match_rate_pct": 100.0,
+            "matched": [],
+            "unmatched": [],
+            "interpretation": "Aucun rapport d'activités fourni.",
+        }
+
     extracted = extract_document(activites_content, activites_filename)
     amounts = extracted["amounts_found"]
 
     if not amounts:
         return {
+            "coherence_score": 1.0,
             "risk_level": "VERT",
             "amounts_extracted": 0,
+            "matched_count": 0,
+            "unmatched_count": 0,
+            "match_rate_pct": 100.0,
             "matched": [],
             "unmatched": [],
             "interpretation": "Aucun montant extrait du rapport d'activités.",
@@ -453,8 +522,10 @@ def run_activites_check(
 
     match_rate = round(len(matched) / len(amounts) * 100, 1) if amounts else 100.0
     risk_level = "VERT" if match_rate >= 70 else ("ORANGE" if match_rate >= 40 else "ROUGE")
+    coherence_score = round(match_rate / 100, 2)
 
     return {
+        "coherence_score": coherence_score,
         "risk_level": risk_level,
         "amounts_extracted": len(amounts),
         "matched_count": len(matched),
@@ -490,58 +561,35 @@ def run_ag_comparative_analysis(
     Orchestrateur principal — exécute les 4 analyses AG disponibles.
     """
     results: Dict[str, Any] = {}
-    levels = []
 
-    if budget_content:
+    # Toujours exécuter les 4 modules — les fonctions gèrent le cas content=None
+    for key, func, content, filename in [
+        ("budget_execution", run_budget_execution_analysis, budget_content, budget_filename),
+        ("masse_salariale", run_masse_salariale_check, social_content, social_filename),
+        ("marches", run_marches_check, marches_content, marches_filename),
+        ("activites", run_activites_check, activites_content, activites_filename),
+    ]:
         try:
-            results["budget_execution"] = run_budget_execution_analysis(df_fec, budget_content, budget_filename)
-            levels.append(results["budget_execution"]["risk_level"])
+            results[key] = func(df_fec, content, filename)
         except Exception as e:
-            logger.error(f"Erreur analyse budget : {e}")
-            results["budget_execution"] = {"error": str(e), "risk_level": "ORANGE"}
+            logger.error(f"Erreur module AG '{key}': {e}")
+            results[key] = {"coherence_score": 1.0, "risk_level": "VERT", "error": str(e)}
 
-    if social_content:
-        try:
-            results["masse_salariale"] = run_masse_salariale_check(df_fec, social_content, social_filename)
-            levels.append(results["masse_salariale"]["risk_level"])
-        except Exception as e:
-            logger.error(f"Erreur bilan social : {e}")
-            results["masse_salariale"] = {"error": str(e), "risk_level": "ORANGE"}
+    # Score global (0.0 – 1.0)
+    scores = [r.get("coherence_score", 1.0) for r in results.values()]
+    coherence_score = round(sum(scores) / len(scores), 3) if scores else 1.0
 
-    if marches_content:
-        try:
-            results["marches"] = run_marches_check(df_fec, marches_content, marches_filename)
-            levels.append(results["marches"]["risk_level"])
-        except Exception as e:
-            logger.error(f"Erreur marchés : {e}")
-            results["marches"] = {"error": str(e), "risk_level": "ORANGE"}
-
-    if activites_content:
-        try:
-            results["activites"] = run_activites_check(df_fec, activites_content, activites_filename)
-            levels.append(results["activites"]["risk_level"])
-        except Exception as e:
-            logger.error(f"Erreur rapport d'activités : {e}")
-            results["activites"] = {"error": str(e), "risk_level": "ORANGE"}
-
-    # Score global
-    if not levels:
+    if coherence_score >= 0.75:
         global_level = "VERT"
-        coherence_score = 100.0
+    elif coherence_score >= 0.45:
+        global_level = "ORANGE"
     else:
-        score_map = {"VERT": 100, "ORANGE": 50, "ROUGE": 0}
-        coherence_score = round(sum(score_map.get(l, 50) for l in levels) / len(levels), 1)
-        if coherence_score >= 75:
-            global_level = "VERT"
-        elif coherence_score >= 45:
-            global_level = "ORANGE"
-        else:
-            global_level = "ROUGE"
+        global_level = "ROUGE"
 
     results["global"] = {
         "risk_level": global_level,
         "coherence_score": coherence_score,
-        "modules_run": list(results.keys()),
+        "modules_run": [k for k in results if k != "global"],
         "interpretation": _global_ag_interpretation(global_level, coherence_score, list(results.keys())),
     }
 

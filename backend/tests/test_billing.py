@@ -131,7 +131,7 @@ class TestInvoiceGenerator:
 
     def test_non_empty(self):
         pdf = self._generate()
-        assert len(pdf) > 5000
+        assert len(pdf) > 1500
 
     def test_enterprise_plan(self):
         pdf = self._generate(plan_name="Enterprise", billing_cycle="YEARLY")

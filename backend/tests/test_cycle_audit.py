@@ -28,7 +28,7 @@ def make_ventes_df(fiscal_year: int = 2024, n_normal: int = 50, n_cutoff: int = 
         })
 
     # Ventes hors période (cutoff)
-    cutoff_dates = pd.date_range(f"{fiscal_year - 1}-10-01", periods=n_cutoff, freq="MS")
+    cutoff_dates = pd.date_range(f"{fiscal_year - 2}-01-01", periods=n_cutoff, freq="MS")
     for d in cutoff_dates:
         rows.append({
             "CompteNum": "701000",
