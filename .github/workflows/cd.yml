@@ -1,0 +1,45 @@
+name: CD — Déploiement production E-DÉFENCE
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/edefence
+
+            echo "--- Pull dernière version ---"
+            git pull origin main
+
+            echo "--- Rebuild services modifiés ---"
+            docker compose -f docker-compose.prod.yml up -d --build backend frontend
+
+            echo "--- Migrations ---"
+            sleep 5
+            docker compose -f docker-compose.prod.yml exec -T backend \
+              alembic upgrade head
+
+            echo "--- Health check ---"
+            sleep 3
+            curl -sf http://localhost:8000/api/health && \
+              echo "✅ Backend OK" || echo "⚠️ Backend KO"
+
+            echo "--- Nettoyage images inutilisées ---"
+            docker image prune -f
+
+            echo "Déploiement terminé : $(date)"
