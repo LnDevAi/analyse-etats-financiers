@@ -7,6 +7,32 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) · Versioning 
 
 ## [Unreleased] — dev
 
+---
+
+## [1.0.1] — 2026-05-28
+
+### Corrigé
+- **`fec_parser`** : colonnes Débit/Crédit forcées en `float` (évitait un dtype `int64` cassant les tests)
+- **`fec_parser`** : `validate_partie_double` retourne un `bool` Python natif au lieu de `numpy.bool_` (incompatible avec `is True`)
+- **`anonymizer`** : SIRET déplacé avant TEL dans la liste des patterns — les 14 chiffres d'un SIRET n'étaient plus masqués à tort comme numéro de téléphone
+- **`anonymizer`** : NOM_PROPRE compilé sans `re.IGNORECASE` — le flag causait des faux positifs sur le texte courant en minuscules
+- **`ag_document_analyzer`** : champs renommés pour respecter la spec API partenaires :
+  - `comparisons` → `comparaison_par_classe`
+  - `discrepancies` → `ecarts_significatifs`
+  - `masse_salariale_doc` → `masse_salariale_document`
+  - `marches_sample` → `marches_compares`
+- **`ag_document_analyzer`** : clé `coherence_score` (0.0 – 1.0) ajoutée à chaque module AG
+- **`ag_document_analyzer`** : score global corrigé — était exprimé sur une échelle 0–100, désormais 0.0–1.0 conforme à l'API
+- **`ag_document_analyzer`** : gardes `None` ajoutées dans les 4 fonctions — plus de crash si un document optionnel est absent
+- **`ag_document_analyzer`** : `run_marches_check` utilise le côté Crédit des comptes 40x (norme SYSCOHADA correcte : Crédit 401 = facture fournisseur reçue)
+- **`ag_document_analyzer`** : l'orchestrateur `run_ag_comparative_analysis` exécute désormais toujours les 4 modules ; chaque fonction gère elle-même le cas `content=None`
+- **`requirements.txt`** : contraintes `>=` au lieu de `==` pour éviter les conflits avec les packages déjà installés
+- **Tests** : 163 tests unitaires, tous verts (8 suites : fec_parser, anonymizer, benford, cycle_audit, analytical_review, ag_document_analyzer, billing, risk_scorer)
+
+---
+
+## [1.0.0] — 2026-05-27
+
 ### Ajouté
 - **Anonymiseur NLP** : masquage automatique emails, tél. UEMOA, SIRET/IFU/RCCM avant traitement IA
 - **Cross-checking FEC×FEC** : comparaison cellulaire de deux documents (INVERSION_SIGNE, ECART_MAJEUR…)
@@ -24,7 +50,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) · Versioning 
   - Détecte manipulation post-clôture entre FEC et états déposés
 - **Score de risque rebalancé** : `coherence_check` intégré à 20 % du score global
 - **Migration Alembic 002** : colonnes `coherence_check_result` + `balance_reconciliation_result`
-- **Tests unitaires** : 7 suites (benford, fec_parser, anonymizer, risk_scorer, cycle_audit, analytical_review, coherence_checker, balance_reconciliation) — 80+ assertions
+- **Tests unitaires** : 8 suites — 163 assertions (benford, fec_parser, anonymizer, risk_scorer, cycle_audit, analytical_review, coherence_checker, balance_reconciliation, ag_document_analyzer, billing)
 - **Frontend** :
   - Pages `/auth/forgot-password` et `/auth/reset-password` (indicateur force mdp)
   - Modal analyse avec sélecteur FEC N-1 + balance générale
@@ -65,4 +91,6 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) · Versioning 
 
 ---
 
+*[1.0.1]: https://github.com/LnDevAi/analyse-etats-financiers/compare/v1.0.0...HEAD*
+*[1.0.0]: https://github.com/LnDevAi/analyse-etats-financiers/releases/tag/v1.0.0*
 *[0.1.0]: https://github.com/LnDevAi/analyse-etats-financiers/releases/tag/v0.1.0*
