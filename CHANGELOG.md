@@ -9,6 +9,20 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) · Versioning 
 
 ---
 
+## [1.0.2] — 2026-05-28
+
+### Corrigé
+- **`frontend/package.json`** : suppression de `@radix-ui/react-badge` — paquet inexistant sur npm, bloquait entièrement `npm install` (aucun fichier ne l'importait)
+- **`frontend/app/cross-check/page.tsx`** : logique d'extraction des soldes dynamiques corrigée — les clés backend sont `solde_<label>` et non `solde_..._a` / `solde_..._b` ; la condition `endsWith('_a')` ne matchait jamais
+- **`frontend/app/cross-check/page.tsx`** : erreur TypeScript `TS2554 Expected 0 arguments, but got 1` résolue sur `.toLocaleString("fr-FR")` via cast `as number | undefined`
+
+### Validé
+- `npm install` : OK — 391 paquets
+- `tsc --noEmit` : 0 erreur TypeScript
+- `next build` : 17/17 pages compilées sans erreur
+
+---
+
 ## [1.0.1] — 2026-05-28
 
 ### Corrigé
@@ -91,6 +105,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) · Versioning 
 
 ---
 
-*[1.0.1]: https://github.com/LnDevAi/analyse-etats-financiers/compare/v1.0.0...HEAD*
+*[1.0.2]: https://github.com/LnDevAi/analyse-etats-financiers/compare/v1.0.1...v1.0.2*
+*[1.0.1]: https://github.com/LnDevAi/analyse-etats-financiers/compare/v1.0.0...v1.0.1*
 *[1.0.0]: https://github.com/LnDevAi/analyse-etats-financiers/releases/tag/v1.0.0*
 *[0.1.0]: https://github.com/LnDevAi/analyse-etats-financiers/releases/tag/v0.1.0*
