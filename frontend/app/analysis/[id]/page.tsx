@@ -89,7 +89,7 @@ export default function AnalysisDetailPage() {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 ml-64 flex items-center justify-center">
+        <main className="flex-1 md:ml-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1e293b]" />
         </main>
       </div>
@@ -109,7 +109,7 @@ export default function AnalysisDetailPage() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 md:ml-64 p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>

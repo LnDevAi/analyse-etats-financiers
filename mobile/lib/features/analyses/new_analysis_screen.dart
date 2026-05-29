@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,15 +66,6 @@ class _NewAnalysisScreenState extends ConsumerState<NewAnalysisScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final formData = FormData.fromMap({
-        'nom_entreprise': _nomEntrepriseController.text.trim(),
-        'exercice': _exerciceSelectionne!,
-        'fichier_fec': await MultipartFile.fromFile(
-          _fichierSelectionne!.path!,
-          filename: _fichierSelectionne!.name,
-        ),
-      });
-
       final notifier = ref.read(newAnalysisProvider.notifier);
       await notifier.creerAnalyse(
         nomEntreprise: _nomEntrepriseController.text.trim(),

@@ -1,1 +1,23 @@
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Désactiver les règles trop strictes pour ce projet
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    use_key_in_widget_constructors: false
+    avoid_print: true
+    prefer_single_quotes: true
+    sort_child_properties_last: true
+    sized_box_for_whitespace: true
+    unnecessary_string_interpolations: true
+
+analyzer:
+  errors:
+    # Ignorer les avertissements sur withOpacity (dépréciation future)
+    deprecated_member_use: ignore
+    deprecated_member_use_from_same_package: ignore
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "build/**"

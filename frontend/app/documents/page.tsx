@@ -193,7 +193,7 @@ export default function DocumentsPage() {
         />
       )}
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 md:ml-64 p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[#1e293b]">Documents</h1>
           <p className="text-gray-500 text-sm mt-0.5">

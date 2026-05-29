@@ -70,7 +70,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 md:ml-64 p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
