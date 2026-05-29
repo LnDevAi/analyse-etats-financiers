@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import I18nProvider from "@/components/I18nProvider";
 
 export const metadata: Metadata = {
   title: "E-DÉFENCE — Analyse Financière IA",
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr">
       <body className="bg-base min-h-screen">
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -24,3 +27,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
